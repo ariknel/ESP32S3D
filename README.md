@@ -12,6 +12,11 @@ ESP3D or OctoPrint involved; it uses only ESP-IDF components.
 - Wi-Fi STA with a fallback setup access point, `http://cr10.local`, and OTA updates.
 - Dry-run mode with a simulated Marlin, for testing without the printer.
 
+![Web interface at http://cr10.local](docs/images/cr10_local.PNG)
+
+*The web interface at `http://cr10.local`: print status, temperatures, file
+upload and list, G-code console, system info and OTA update.*
+
 ---
 
 ## 1. Hardware & wiring
@@ -81,6 +86,59 @@ firmware is **built** in Docker and **flashed** by the standalone
 `esp_rfc2217_server.exe` on `localhost:4000`. That keeps backtrace decoding.
 Windows Firewall may ask about the bridge the first time.
 
+### Manually with Docker (no helper scripts)
+
+`idf.ps1` / `idf.sh` only wrap these commands. Run them from the project
+folder. The examples use PowerShell; in bash, replace `${PWD}` with `$(pwd)` and
+the backticks with `\`.
+
+**1. Build the image** (once, or after changing the `Dockerfile`):
+```powershell
+docker build -t cr10-idf .
+```
+
+**2. Build the firmware.** The output goes to `build/`:
+```powershell
+docker run --rm -v "${PWD}:/project" -v cr10-idf-cache:/opt/idf-cache -w /project cr10-idf idf.py build
+```
+- Dry-run variant: add
+  `-B build_dry -D SDKCONFIG=build_dry/sdkconfig -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.dryrun"`
+  after `idf.py`.
+- Configure: `docker run --rm -it ... cr10-idf idf.py menuconfig` (same `-v`/`-w` options).
+
+**3. Flash.** Docker Desktop on Windows/macOS cannot reach COM ports, so flash
+from the host with esptool. On Windows that's the standalone
+[esptool release](https://github.com/espressif/esptool/releases) (no Python
+needed; `idf.ps1` keeps a copy in `tools/esptool/`). Elsewhere use
+`pip install esptool`.
+```powershell
+cd build
+esptool.exe --chip esp32s3 -p COM3 -b 460800 --before default-reset --after hard-reset write-flash `
+  --flash_mode dio --flash_freq 80m --flash_size 8MB `
+  0x0 bootloader\bootloader.bin `
+  0x8000 partition_table\partition-table.bin `
+  0xf000 ota_data_initial.bin `
+  0x20000 cr10_print_server.bin
+```
+After the first flash, `0x20000 cr10_print_server.bin` alone is enough for app
+updates (or use OTA from the web page). On **Linux** you can instead flash from
+inside the container:
+```bash
+docker run --rm -it --device /dev/ttyUSB0 -v "$(pwd):/project" -v cr10-idf-cache:/opt/idf-cache -w /project \
+  cr10-idf idf.py -p /dev/ttyUSB0 flash monitor
+```
+
+**4. Serial monitor.** Any terminal at 115200 baud on the UART port works (PuTTY,
+VS Code Serial Monitor). To get `idf.py monitor` with crash backtrace
+decoding, bridge the port into Docker:
+```powershell
+# window 1 (host)
+esp_rfc2217_server.exe -p 4000 COM3
+# window 2
+docker run --rm -it -v "${PWD}:/project" -v cr10-idf-cache:/opt/idf-cache -w /project cr10-idf `
+  idf.py -p "rfc2217://host.docker.internal:4000?ign_set_control" monitor
+```
+
 ### Linux / macOS
 
 ```bash
@@ -110,8 +168,12 @@ Hold **BOOT**, tap **RESET**, release BOOT, then flash again.
 
 1. With no Wi-Fi stored, the ESP32 opens the AP **`CR10-Setup`** (password
    `cr10setup`, set in menuconfig).
-2. Connect to it and open **http://192.168.4.1/setup**. Enter your Wi-Fi details
-   and save; it reboots.
+2. Connect to it. A captive portal should open the setup page by itself. If it
+   doesn't, browse to **http://192.168.4.1/setup** (type the `http://`). Enter
+   your Wi-Fi details and press *Save & reboot*.
+
+   ![Wi-Fi setup page](docs/images/wifi-setup.PNG)
+
 3. Open **http://cr10.local/**. If your OS lacks mDNS, use the IP printed in the
    serial log.
 4. If the stored network can't be joined within 20 s, the setup AP comes back
@@ -212,9 +274,10 @@ The exact versions are pinned in `dependencies.lock` after the first build.
 
 ## 9. Known limitations
 
-- **Not yet tested on real hardware.** Both variants compile cleanly (no
-  warnings) against the versions above, but nothing has run on a board or
-  against a real CR-10. Test with the dry run first, then with a short print.
+- **Printing is not yet tested against a real CR-10.** Boot, Wi-Fi, the setup
+  portal, SD card (SPI) and the web UI have been checked on an ESP32-S3
+  (N16R8, CH343 UART). The USB link to Marlin and the print streaming have not.
+  Test with the dry run first, then with a short print.
 - **Stop during M109/M190:** breaking the wait needs Marlin's
   `EMERGENCY_PARSER`. Stock CR-10 firmware may not have it; then the stop runs
   after heating finishes.
@@ -234,7 +297,9 @@ The exact versions are pinned in `dependencies.lock` after the first build.
   with each upload.
 - **No authentication** on the web UI or API. Keep it on a trusted network and
   change the setup AP password.
-- **No captive portal** in AP mode; browse to `192.168.4.1/setup` yourself.
+- The captive portal answers DNS with the AP address and redirects unknown URLs
+  to `/setup`. A few phones still need the page opened by hand at
+  `http://192.168.4.1/setup`.
 - While the setup AP fallback is active, STA retries (with backoff up to 60 s)
   can briefly disturb AP clients.
 - The upload "strip" option removes only comment-only and blank lines. Inline
