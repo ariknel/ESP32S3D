@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CR-10 Print Server</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--fg:#1d2330;--mut:#6b7280;--line:#e3e6eb;--acc:#2563eb;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;--hot:#ea580c;--bedc:#0891b2;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color-scheme:light}
+:root.dark{--bg:#0f1218;--card:#181c24;--fg:#e6e9ef;--mut:#9aa3b2;--line:#2a303c;--acc:#60a5fa;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--hot:#fb923c;--bedc:#22d3ee;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0;font-weight:650}
+.sp{flex:1}
+.pill{padding:3px 10px;border-radius:99px;font-size:13px;font-weight:600;background:var(--line);white-space:nowrap}
+.pill.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.pill.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.pill.bad{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+.pill.acc{background:color-mix(in srgb,var(--acc) 18%,transparent);color:var(--acc)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--bad);display:inline-block}
+.dot.on{background:var(--ok)}
+main{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 12px}
+.wide{grid-column:1/-1}
+.banner{grid-column:1/-1;padding:10px 14px;border-radius:10px;border:1px solid var(--warn);color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.banner.bad{border-color:var(--bad);color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,transparent)}
+button{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:8px 14px;border-radius:8px;cursor:pointer;touch-action:manipulation}
+button:hover:not(:disabled){border-color:var(--acc)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 50%,var(--line))}
+button.sm{padding:4px 10px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.bar{height:12px;background:var(--line);border-radius:99px;overflow:hidden;margin:10px 0}
+.bar>i{display:block;height:100%;width:0;background:var(--acc);transition:width .4s}
+.big{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}
+.mut{color:var(--mut);font-size:13px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.kv span:nth-child(odd){color:var(--mut)}
+.temps{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.temp{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.temp b{font-size:26px;font-variant-numeric:tabular-nums}
+.temp.he b{color:var(--hot)}.temp.bd b{color:var(--bedc)}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:18px;text-align:center;color:var(--mut);cursor:pointer;transition:.15s}
+.drop.over{border-color:var(--acc);color:var(--acc);background:color-mix(in srgb,var(--acc) 8%,transparent)}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl td,.tbl th{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
+.tbl th{color:var(--mut);font-weight:500;font-size:12px;text-transform:uppercase}
+.tbl td.n{word-break:break-all}
+.tbl td.a{white-space:nowrap;text-align:right}
+.scroll{overflow-x:auto}
+#log{height:260px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font:12.5px/1.4 var(--mono);white-space:pre-wrap;word-break:break-all;margin:0 0 8px}
+#log .s{color:var(--acc)}#log .e{color:var(--bad)}#log .r{color:var(--fg)}
+input[type=text],input[type=password]{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);min-width:0}
+input[type=text]:focus{outline:2px solid var(--acc);outline-offset:-1px}
+#cmd{flex:1;font-family:var(--mono)}
+label.chk{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--mut)}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;z-index:9}
+#toast.show{opacity:1}
+@media(max-width:520px){main{padding:10px;gap:10px}.big{font-size:24px}header h1{font-size:15px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>CR-10</h1>
+  <span id="pill" class="pill">…</span>
+  <span class="sp"></span>
+  <span class="dot" id="wsdot" title="Live connection"></span>
+  <button class="sm" id="theme" title="Toggle theme">◐</button>
+</header>
+
+<main>
+  <div id="banners" class="wide" style="display:grid;gap:10px"></div>
+
+  <section class="card">
+    <h2>Print</h2>
+    <div class="row"><div class="big" id="pct">–</div><span class="sp"></span><span class="mut" id="jobstate"></span></div>
+    <div class="bar"><i id="pbar"></i></div>
+    <div class="kv">
+      <span>File</span><span id="pfile">–</span>
+      <span>Elapsed</span><span id="pel">–</span>
+      <span>Remaining</span><span id="peta">–</span>
+      <span>Line</span><span id="pline">–</span>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button id="bpause">Pause</button>
+      <button id="bresume" class="pri">Resume</button>
+      <button id="bstop" class="danger">Stop</button>
+    </div>
+    <div class="mut" id="stopconfirm" hidden style="margin-top:8px">Tap Stop again to confirm.</div>
+  </section>
+
+  <section class="card">
+    <h2>Temperatures</h2>
+    <div class="temps">
+      <div class="temp he"><div class="mut">Hotend</div><b id="the">–</b> <span class="mut" id="thet"></span></div>
+      <div class="temp bd"><div class="mut">Bed</div><b id="tbed">–</b> <span class="mut" id="tbedt"></span></div>
+    </div>
+    <div class="row">
+      <button data-pre="pla">Preheat PLA</button>
+      <button data-pre="petg">Preheat PETG</button>
+      <button data-pre="cool">Cool down</button>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <h2>Files</h2>
+    <div class="drop" id="drop">Drop G-code here or <u>choose a file</u><input type="file" id="file" accept=".gcode,.gco,.g,.txt" hidden></div>
+    <div class="row" style="margin-top:10px">
+      <label class="chk"><input type="checkbox" id="strip"> Strip comment-only &amp; blank lines</label>
+      <span class="sp"></span><span class="mut" id="sdinfo"></span>
+    </div>
+    <div id="upwrap" hidden>
+      <div class="bar"><i id="ubar"></i></div>
+      <div class="row mut"><span id="utext"></span><span class="sp"></span><button class="sm" id="ucancel">Cancel</button></div>
+    </div>
+    <div class="scroll"><table class="tbl" style="margin-top:8px">
+      <thead><tr><th>Name</th><th>Size</th><th>Date</th><th></th></tr></thead>
+      <tbody id="files"><tr><td colspan="4" class="mut">Loading…</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section class="card wide">
+    <h2>Console</h2>
+    <pre id="log"></pre>
+    <form class="row" id="cform">
+      <input type="text" id="cmd" placeholder="G-code, e.g. M105" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <button class="pri">Send</button>
+    </form>
+    <div class="row" style="margin-top:8px">
+      <button class="sm" data-cmd="M105">M105</button>
+      <button class="sm" data-cmd="M114">M114</button>
+      <button class="sm" data-cmd="M115">M115</button>
+      <button class="sm" data-cmd="G28">Home</button>
+      <button class="sm" data-cmd="M84">Motors off</button>
+      <span class="sp"></span>
+      <label class="chk"><input type="checkbox" id="autoscroll" checked> Autoscroll</label>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <h2>System</h2>
+    <div class="kv" id="sys"></div>
+    <div class="row" style="margin-top:14px">
+      <button id="bota">Firmware update (.bin)</button><input type="file" id="otafile" accept=".bin" hidden>
+      <a href="/setup"><button>Wi-Fi settings</button></a>
+      <button id="breboot" class="danger">Reboot</button>
+    </div>
+    <div id="otawrap" hidden><div class="bar"><i id="obar"></i></div><div class="mut" id="otext"></div></div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+let S=null, lastJob=null, ws=null, wsTimer=null, pollTimer=null, upXhr=null;
+
+/* ---------- theme ---------- */
+const root=document.documentElement;
+function applyTheme(t){root.classList.toggle('dark',t==='dark')}
+let theme=null;try{theme=localStorage.getItem('theme')}catch(e){}
+applyTheme(theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
+$('theme').onclick=()=>{const t=root.classList.contains('dark')?'light':'dark';applyTheme(t);try{localStorage.setItem('theme',t)}catch(e){}};
+
+/* ---------- helpers ---------- */
+function toast(msg,ms){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),ms||2800)}
+async function api(path,opt){
+  const r=await fetch(path,Object.assign({method:'POST'},opt||{}));
+  let j={};try{j=await r.json()}catch(e){}
+  if(!r.ok||j.ok===false)throw new Error(j.error||('HTTP '+r.status));
+  return j;
+}
+const act=(p,o)=>api(p,o).catch(e=>toast(e.message));
+function fmtBytes(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB'}
+function fmtDur(s){if(s==null||!isFinite(s))return '–';s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+'h ':'')+(h||m?m+'m ':'')+x+'s'}
+function fmtDate(t){if(!t||t<946684800)return '–';const d=new Date(t*1000);return d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const ACTIVE=['printing','pausing','paused','resuming','stopping'];
+
+/* ---------- status rendering ---------- */
+function render(s){
+  S=s;
+  const active=ACTIVE.includes(s.job), ready=s.link==='ready';
+  let label,cls;
+  if(s.link==='disconnected'){label='Printer disconnected';cls='bad'}
+  else if(s.link==='connecting'){label='Connecting…';cls='warn'}
+  else if(s.job==='printing'){label='Printing';cls='acc'}
+  else if(s.job==='paused'||s.job==='pausing'){label=s.job==='paused'?'Paused':'Pausing…';cls='warn'}
+  else if(s.job==='resuming'){label='Resuming…';cls='acc'}
+  else if(s.job==='stopping'){label='Stopping…';cls='warn'}
+  else if(s.job==='failed'){label='Error';cls='bad'}
+  else {label='Idle';cls='ok'}
+  if(s.link!=='ready'&&s.job==='failed'){label='Error · '+label}
+  const p=$('pill');p.textContent=label;p.className='pill '+cls;
+
+  const showJob=s.file&&s.job!=='idle';
+  $('pct').textContent=showJob?s.pct.toFixed(1)+' %':'–';
+  $('pbar').style.width=(showJob?s.pct:0)+'%';
+  $('pbar').style.background=s.job==='failed'?'var(--bad)':(s.job==='finished'?'var(--ok)':'var(--acc)');
+  $('jobstate').textContent=s.job;
+  $('pfile').textContent=s.file||'–';
+  $('pel').textContent=showJob?fmtDur(s.elapsed):'–';
+  $('peta').textContent=(s.job==='printing'&&s.pct>1)?'≈ '+fmtDur(s.elapsed*(100-s.pct)/s.pct):'–';
+  $('pline').textContent=showJob?s.line+' ('+fmtBytes(s.sent)+' / '+fmtBytes(s.size)+')':'–';
+  $('bpause').disabled=s.job!=='printing';
+  $('bresume').disabled=s.job!=='paused';
+  $('bstop').disabled=!active||s.job==='stopping';
+
+  $('the').textContent=s.tv?s.he.toFixed(1)+'°':'–';
+  $('thet').textContent=s.tv&&s.het>0?'→ '+s.het.toFixed(0)+'°':'';
+  $('tbed').textContent=s.tv?s.bed.toFixed(1)+'°':'–';
+  $('tbedt').textContent=s.tv&&s.bedt>0?'→ '+s.bedt.toFixed(0)+'°':'';
+  document.querySelectorAll('[data-pre]').forEach(b=>b.disabled=!ready||active);
+  document.querySelectorAll('[data-cmd]').forEach(b=>b.disabled=!ready);
+  document.querySelectorAll('.fprint').forEach(b=>b.disabled=!ready||active);
+  document.querySelectorAll('.fdel').forEach(b=>b.disabled=active);
+  $('drop').style.opacity=active||!s.sd?.4:1;
+
+  /* banners */
+  const b=[];
+  if(s.dry)b.push(['DRY RUN: the printer is simulated. Nothing is sent to a real CR-10.','']);
+  if(s.net.mode!=='sta')b.push(['Setup mode: connected via access point "'+esc(s.net.ap)+'". <a href="/setup">Configure Wi-Fi</a>','']);
+  if(!s.sd)b.push(['SD card not mounted. Insert a FAT32 card (retrying automatically).','bad']);
+  if(s.job==='failed'&&s.err)b.push(['Print failed: '+esc(s.err)+(s.ckpt?' (stopped at line '+s.ckpt.line+', byte '+s.ckpt.offset+' of '+s.ckpt.size+')':''),'bad']);
+  else if(s.err&&!active&&s.job!=='finished')b.push(['Printer error: '+esc(s.err),'bad']);
+  if(!active&&s.job==='idle'&&s.ckpt&&(s.ckpt.state==='printing'||s.ckpt.state==='paused'||s.ckpt.state==='failed'))
+    b.push(['Last print "'+esc(s.ckpt.file)+'" did not finish ('+esc(s.ckpt.state)+(s.ckpt.reason?': '+esc(s.ckpt.reason):'')+'), last confirmed line '+s.ckpt.line+' ('+(s.ckpt.size?(100*s.ckpt.offset/s.ckpt.size).toFixed(1):0)+' %).','']);
+  $('banners').innerHTML=b.map(x=>'<div class="banner '+x[1]+'">'+x[0]+'</div>').join('');
+
+  const n=s.net;
+  $('sys').innerHTML=[
+    ['Firmware',esc(s.ver)],
+    ['Printer',esc(s.fw||'–')+(s.autorep?'':' (temp polling)')],
+    ['Link',esc(s.link)+' · resends '+s.resends+' · recoveries '+s.recov],
+    ['Network',n.sta?esc(n.ssid)+' · '+n.ip+' · '+n.rssi+' dBm':(n.mode==='sta'?'connecting to '+esc(n.ssid):'AP '+esc(n.ap)+' · '+n.apip)],
+    ['Address','http://'+esc(n.host)+'.local/'],
+    ['Free heap',fmtBytes(s.heap)+' · up '+fmtDur(s.up)]
+  ].map(r=>'<span>'+r[0]+'</span><span>'+r[1]+'</span>').join('');
+
+  if(lastJob!==null&&lastJob!==s.job&&!ACTIVE.includes(s.job))loadFiles();
+  lastJob=s.job;
+}
+
+/* ---------- console ---------- */
+function addLog(lines){
+  const el=$('log'),frag=document.createDocumentFragment();
+  for(const l of lines){
+    const d=document.createElement('div');
+    d.className=l[0]==='>'?'s':l[0]==='!'?'e':'r';
+    d.textContent=l;frag.appendChild(d);
+  }
+  el.appendChild(frag);
+  while(el.childNodes.length>500)el.removeChild(el.firstChild);
+  if($('autoscroll').checked)el.scrollTop=el.scrollHeight;
+}
+async function sendCmd(c){
+  c=c.trim();if(!c)return;
+  try{await api('/api/gcode',{body:c})}catch(e){addLog(['! '+e.message]);toast(e.message)}
+}
+$('cform').onsubmit=e=>{e.preventDefault();const v=$('cmd').value;$('cmd').value='';sendCmd(v)};
+document.querySelectorAll('[data-cmd]').forEach(b=>b.onclick=()=>sendCmd(b.dataset.cmd));
+document.querySelectorAll('[data-pre]').forEach(b=>b.onclick=()=>act('/api/preheat?m='+b.dataset.pre).then(r=>r&&toast(b.textContent+' sent')));
+
+/* ---------- print controls ---------- */
+$('bpause').onclick=()=>act('/api/pause');
+$('bresume').onclick=()=>act('/api/resume');
+let stopArm=0;
+$('bstop').onclick=()=>{
+  if(Date.now()-stopArm>4000){stopArm=Date.now();$('stopconfirm').hidden=false;setTimeout(()=>$('stopconfirm').hidden=true,4000);return}
+  stopArm=0;$('stopconfirm').hidden=true;act('/api/stop');
+};
+
+/* ---------- files ---------- */
+async function loadFiles(){
+  try{
+    const r=await fetch('/api/files');const j=await r.json();
+    const tb=$('files');
+    if(!j.sd){tb.innerHTML='<tr><td colspan="4" class="mut">SD card not mounted</td></tr>';return}
+    j.files.sort((a,b)=>b.mtime-a.mtime||a.name.localeCompare(b.name));
+    $('sdinfo').textContent=j.files.length+' file'+(j.files.length===1?'':'s');
+    if(!j.files.length){tb.innerHTML='<tr><td colspan="4" class="mut">No files yet. Upload a .gcode file above.</td></tr>';return}
+    tb.innerHTML=j.files.map(f=>'<tr><td class="n">'+esc(f.name)+'</td><td>'+fmtBytes(f.size)+'</td><td class="mut">'+fmtDate(f.mtime)+
+      '</td><td class="a"><button class="sm pri fprint" data-n="'+esc(f.name)+'">Print</button> <button class="sm danger fdel" data-n="'+esc(f.name)+'">Delete</button></td></tr>').join('');
+    tb.querySelectorAll('.fprint').forEach(b=>b.onclick=()=>act('/api/print?name='+encodeURIComponent(b.dataset.n)).then(r=>r&&toast('Starting '+b.dataset.n)));
+    tb.querySelectorAll('.fdel').forEach(b=>b.onclick=()=>{
+      if(b.dataset.armed){act('/api/delete?name='+encodeURIComponent(b.dataset.n)).then(loadFiles);return}
+      b.dataset.armed=1;b.textContent='Sure?';setTimeout(()=>{delete b.dataset.armed;b.textContent='Delete'},3000);
+    });
+    if(S)render(S);
+  }catch(e){}
+}
+
+function upload(file){
+  if(S&&ACTIVE.includes(S.job)){toast('Uploads are blocked while printing');return}
+  if(upXhr){toast('Upload already running');return}
+  const x=new XMLHttpRequest();upXhr=x;
+  const t0=Date.now();
+  $('upwrap').hidden=false;$('ubar').style.width='0';$('utext').textContent='Uploading '+file.name+'…';
+  x.upload.onprogress=e=>{if(!e.lengthComputable)return;const p=100*e.loaded/e.total;$('ubar').style.width=p+'%';
+    const kbs=e.loaded/1024/Math.max(.1,(Date.now()-t0)/1000);
+    $('utext').textContent=file.name+': '+p.toFixed(0)+'% · '+kbs.toFixed(0)+' KB/s';};
+  x.onloadend=()=>{
+    upXhr=null;let j={};try{j=JSON.parse(x.responseText)}catch(e){}
+    if(x.status===200&&j.ok){toast('Uploaded '+j.name+(j.size!==j.received?' ('+fmtBytes(j.received-j.size)+' stripped)':''));$('upwrap').hidden=true}
+    else{$('utext').textContent='Upload failed: '+(j.error||x.statusText||'network error');}
+    loadFiles();
+  };
+  x.open('POST','/api/upload?name='+encodeURIComponent(file.name)+'&strip='+($('strip').checked?1:0)+'&ts='+Date.now());
+  x.send(file);
+}
+$('ucancel').onclick=()=>{if(upXhr)upXhr.abort();$('upwrap').hidden=true};
+const drop=$('drop');
+drop.onclick=()=>$('file').click();
+$('file').onchange=e=>{if(e.target.files[0])upload(e.target.files[0]);e.target.value=''};
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)upload(f)});
+try{$('strip').checked=localStorage.getItem('strip')==='1'}catch(e){}
+$('strip').onchange=()=>{try{localStorage.setItem('strip',$('strip').checked?'1':'0')}catch(e){}};
+
+/* ---------- system ---------- */
+$('bota').onclick=()=>$('otafile').click();
+$('otafile').onchange=e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  const x=new XMLHttpRequest();$('otawrap').hidden=false;
+  x.upload.onprogress=ev=>{if(ev.lengthComputable){$('obar').style.width=(100*ev.loaded/ev.total)+'%';$('otext').textContent='Uploading firmware… '+(100*ev.loaded/ev.total).toFixed(0)+'%'}};
+  x.onloadend=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(err){}
+    $('otext').textContent=(x.status===200&&j.ok)?'Update OK, rebooting… the page reconnects automatically.':'Update failed: '+(j.error||'network error');};
+  x.open('POST','/api/ota');x.send(f);
+};
+let rbArm=0;
+$('breboot').onclick=()=>{if(Date.now()-rbArm>4000){rbArm=Date.now();toast('Tap Reboot again to confirm');return}act('/api/reboot').then(r=>r&&toast('Rebooting…'))};
+
+/* ---------- live connection ---------- */
+function connectWs(){
+  clearTimeout(wsTimer);
+  try{ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws')}catch(e){wsTimer=setTimeout(connectWs,3000);return}
+  ws.onopen=()=>{$('wsdot').classList.add('on');clearInterval(pollTimer);pollTimer=null};
+  ws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(e){return}
+    if(m.status)render(m.status);if(m.log&&m.log.length)addLog(m.log);};
+  ws.onclose=()=>{$('wsdot').classList.remove('on');ws=null;startPoll();wsTimer=setTimeout(connectWs,3000)};
+  ws.onerror=()=>{try{ws.close()}catch(e){}};
+}
+function startPoll(){if(pollTimer)return;pollTimer=setInterval(async()=>{try{render(await (await fetch('/api/status')).json())}catch(e){}},3000)}
+
+(async function init(){
+  try{render(await (await fetch('/api/status')).json())}catch(e){}
+  try{const j=await (await fetch('/api/log')).json();addLog(j.log)}catch(e){}
+  loadFiles();connectWs();
+})();
+</script>
+</body>
+</html>

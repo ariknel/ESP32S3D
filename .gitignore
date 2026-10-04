@@ -1,0 +1,9 @@
+build/
+managed_components/
+dependencies.lock
+sdkconfig
+sdkconfig.old
+tools/esptool/
+build_dry/
+*.log
+.devcontainer/.env

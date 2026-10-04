@@ -1,0 +1,38 @@
+{
+  // VS Code detects this folder and offers "Reopen in Container".
+  // Same image as the terminal scripts (idf.ps1 / idf.sh) use.
+  "name": "CR-10 Print Server (ESP-IDF)",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/project,type=bind",
+  "workspaceFolder": "/project",
+  "mounts": [
+    // component manager + ccache cache shared with idf.ps1 / idf.sh
+    "source=cr10-idf-cache,target=/opt/idf-cache,type=volume"
+  ],
+  // Docker Desktop on Windows/macOS cannot pass USB serial ports into a
+  // container. Flash/monitor go through an RFC2217 server on the host
+  // (".\idf.ps1 serve COM5" on Windows), reachable as host.docker.internal.
+  "runArgs": ["--add-host=host.docker.internal:host-gateway"],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "espressif.esp-idf-extension",
+        "ms-vscode.cpptools"
+      ],
+      "settings": {
+        "idf.espIdfPath": "/opt/esp/idf",
+        "idf.toolsPath": "/opt/esp",
+        "idf.gitPath": "/usr/bin/git",
+        "idf.port": "rfc2217://host.docker.internal:4000?ign_set_control",
+        "idf.flashType": "UART",
+        "idf.adapterTargetName": "esp32s3",
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "C_Cpp.default.compileCommands": "/project/build/compile_commands.json",
+        "files.associations": { "*.h": "c" }
+      }
+    }
+  }
+}

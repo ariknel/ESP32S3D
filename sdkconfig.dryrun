@@ -1,0 +1,5 @@
+# Overlay for a test build without the CR-10 (simulated Marlin).
+# Used by: idf.ps1 build-dry / idf.sh build-dry
+CONFIG_CR10_PRINTER_DRY_RUN=y
+CONFIG_CR10_DRY_RUN_DELAY_MS=15
+CONFIG_CR10_DRY_RUN_ERROR_EVERY=200

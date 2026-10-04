@@ -1,0 +1,5 @@
+dependencies:
+  idf: ">=5.3"
+  # CH34x VCP driver (pure C API since 2.1.0, PID auto-detect since 2.2.0,
+  # DTR/RTS polarity fix in 2.2.1). Pulls espressif/usb_host_cdc_acm ^2.1.
+  espressif/usb_host_ch34x_vcp: "^2.2.1"

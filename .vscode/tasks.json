@@ -1,0 +1,37 @@
+{
+  // Available inside the dev container (Terminal > Run Task).
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "IDF: build",
+      "type": "shell",
+      "command": "idf.py build",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "IDF: menuconfig",
+      "type": "shell",
+      "command": "idf.py menuconfig",
+      "problemMatcher": []
+    },
+    {
+      "label": "IDF: flash + monitor (via host RFC2217 server)",
+      "type": "shell",
+      "command": "idf.py -p 'rfc2217://host.docker.internal:4000?ign_set_control' flash monitor",
+      "problemMatcher": []
+    },
+    {
+      "label": "IDF: monitor (via host RFC2217 server)",
+      "type": "shell",
+      "command": "idf.py -p 'rfc2217://host.docker.internal:4000?ign_set_control' monitor",
+      "problemMatcher": []
+    },
+    {
+      "label": "IDF: fullclean",
+      "type": "shell",
+      "command": "idf.py fullclean",
+      "problemMatcher": []
+    }
+  ]
+}

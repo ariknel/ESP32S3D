@@ -1,0 +1,153 @@
+menu "CR-10 Print Server"
+
+    menu "SD card"
+        choice CR10_SD_MODE
+            prompt "SD card interface"
+            default CR10_SD_MODE_SPI
+            config CR10_SD_MODE_SPI
+                bool "SPI (SDSPI)"
+            config CR10_SD_MODE_SDMMC
+                bool "SDMMC 1-bit"
+        endchoice
+
+        config CR10_SD_SPI_CS
+            int "SPI CS GPIO"
+            depends on CR10_SD_MODE_SPI
+            range 0 48
+            default 10
+        config CR10_SD_SPI_MOSI
+            int "SPI MOSI GPIO"
+            depends on CR10_SD_MODE_SPI
+            range 0 48
+            default 11
+        config CR10_SD_SPI_SCK
+            int "SPI SCK GPIO"
+            depends on CR10_SD_MODE_SPI
+            range 0 48
+            default 12
+        config CR10_SD_SPI_MISO
+            int "SPI MISO GPIO"
+            depends on CR10_SD_MODE_SPI
+            range 0 48
+            default 13
+
+        config CR10_SD_MMC_CLK
+            int "SDMMC CLK GPIO"
+            depends on CR10_SD_MODE_SDMMC
+            range 0 48
+            default 12
+        config CR10_SD_MMC_CMD
+            int "SDMMC CMD GPIO"
+            depends on CR10_SD_MODE_SDMMC
+            range 0 48
+            default 11
+        config CR10_SD_MMC_D0
+            int "SDMMC D0 GPIO"
+            depends on CR10_SD_MODE_SDMMC
+            range 0 48
+            default 13
+
+        config CR10_SD_FREQ_KHZ
+            int "SD bus frequency (kHz)"
+            range 400 40000
+            default 20000
+            help
+                Lower this (e.g. 10000) if you get CRC/timeout errors with long wires.
+    endmenu
+
+    menu "Printer link"
+        config CR10_PRINTER_BAUD
+            int "Baud rate"
+            default 115200
+
+        config CR10_PRINTER_DTR_ON_CONNECT
+            bool "Assert DTR when the printer connects (resets the ATmega once)"
+            default y
+            help
+                Asserting DTR pulls the Melzi reset line through its capacitor, which
+                restarts Marlin exactly once on connect. This gives a known clean state.
+                DTR is never touched again until the next USB connect.
+
+        config CR10_PRINTER_RTS_ON_CONNECT
+            bool "Assert RTS when the printer connects"
+            default y
+
+        config CR10_PRINTER_BANNER_TIMEOUT_MS
+            int "Max wait for Marlin 'start' banner after connect (ms)"
+            default 10000
+            help
+                If no 'start' line arrives in this time (e.g. DTR reset disabled),
+                the handshake proceeds anyway.
+
+        config CR10_PRINTER_DRY_RUN
+            bool "Dry run: simulate a Marlin printer (no USB)"
+            default n
+            help
+                Replaces the USB/CH34x transport with a simulated Marlin that validates
+                line numbers/checksums and replies 'ok', reports temperatures etc.
+
+        config CR10_DRY_RUN_DELAY_MS
+            int "Dry run: reply delay per command (ms)"
+            depends on CR10_PRINTER_DRY_RUN
+            default 15
+
+        config CR10_DRY_RUN_ERROR_EVERY
+            int "Dry run: inject a checksum error every N lines (0 = never)"
+            depends on CR10_PRINTER_DRY_RUN
+            default 0
+    endmenu
+
+    menu "Print streaming"
+        config CR10_GCODE_OK_TIMEOUT_MS
+            int "Printer silence timeout (ms)"
+            default 10000
+            help
+                If no ok/busy arrives for this long while a command is in flight:
+                - printer completely silent -> assume reset/power loss, abort print.
+                - printer still talking (temp reports) -> re-send the pending line
+                  once per period to recover a lost 'ok' (Marlin rejects duplicates).
+
+        config CR10_CHECKPOINT_INTERVAL_S
+            int "Checkpoint interval (s)"
+            default 30
+
+        config CR10_PAUSE_RETRACT_MM10
+            int "Pause retract length (tenths of mm)"
+            default 20
+        config CR10_PAUSE_Z_LIFT_MM
+            int "Pause Z lift (mm)"
+            default 5
+        config CR10_STOP_Z_LIFT_MM
+            int "Stop Z lift (mm)"
+            default 10
+
+        config CR10_PREHEAT_PLA_HOTEND
+            int "Preheat PLA hotend (C)"
+            default 200
+        config CR10_PREHEAT_PLA_BED
+            int "Preheat PLA bed (C)"
+            default 60
+        config CR10_PREHEAT_PETG_HOTEND
+            int "Preheat PETG hotend (C)"
+            default 235
+        config CR10_PREHEAT_PETG_BED
+            int "Preheat PETG bed (C)"
+            default 80
+    endmenu
+
+    menu "Network"
+        config CR10_HOSTNAME
+            string "Hostname / mDNS name"
+            default "cr10"
+        config CR10_AP_SSID
+            string "Setup AP SSID"
+            default "CR10-Setup"
+        config CR10_AP_PASSWORD
+            string "Setup AP password (empty = open, otherwise >= 8 chars)"
+            default "cr10setup"
+        config CR10_STA_CONNECT_TIMEOUT_S
+            int "STA connect timeout before falling back to AP (s)"
+            default 20
+    endmenu
+
+endmenu
